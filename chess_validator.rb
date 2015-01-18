@@ -2,8 +2,14 @@ require 'pry'
 class ChessBoard
 	attr_accessor :w_team, :b_team
 	def initialize
-		@w_team = {:knight => Knight.new("b2",self,"white"),:queen => Queen.new("d3",self,"white")}
-		@b_team = {:rook2 => Rook.new("a4",self,"black")}
+		@w_team = {:pawn1 => Pawn.new("a2",self,"white"), :pawn2 => Pawn.new("b2",self,"white"),:pawn3 => Pawn.new("c2",self,"white"),:pawn4 => Pawn.new("d2",self,"white"),
+				   :pawn5 => Pawn.new("e2",self,"white"), :pawn6 => Pawn.new("f2",self,"white"),:pawn7 => Pawn.new("g2",self,"white"),:pawn8 => Pawn.new("h2",self,"white"),
+				   :rook1 => Rook.new("a1",self,"white"), :rook2 => Rook.new("h1",self,"white"),:knight1 => Knight.new("b1",self,"white"),:knight2 => Knight.new("g1",self,"white"),
+				   :bishop1 => Bishop.new("c1",self,"white"),:bishop2 => Bishop.new("f1",self,"white"),:queen => Queen.new("d1",self,"white"),:king => King.new("e1",self,"white")}
+		@b_team = {:pawn1 => Pawn.new("a7",self,"black"), :pawn2 => Pawn.new("b7",self,"black"),:pawn3 => Pawn.new("c7",self,"black"),:pawn4 => Pawn.new("d7",self,"black"),
+				   :pawn5 => Pawn.new("e7",self,"black"), :pawn6 => Pawn.new("f7",self,"black"),:pawn7 => Pawn.new("g7",self,"black"),:pawn8 => Pawn.new("h7",self,"black"),
+				   :rook1 => Rook.new("a8",self,"black"), :rook2 => Rook.new("h8",self,"black"),:knight1 => Knight.new("b8",self,"black"),:knight2 => Knight.new("g8",self,"black"),
+				   :bishop1 => Bishop.new("c8",self,"black"),:bishop2 => Bishop.new("f8",self,"black"),:queen => Queen.new("d8",self,"black"),:king => King.new("e8",self,"black")}
 	end
 
 	def move_piece(initial, final)
@@ -35,6 +41,44 @@ class ChessBoard
 		end
 		the_piece
 	end
+
+	def draw_board
+		row = [*1..8].reverse
+		column = [*"a" .. "h"]
+		print "\n\n\t"
+		row.each do |r|
+			column.each do |c|
+				piece = get_piece(c,r)
+				draw_position(piece,c,r)
+			end
+		end
+	end
+
+	def draw_position(piece,column,row)
+		if piece == nil
+			print "-- "
+		else
+			if piece[1].color == "white"
+				print "w"
+			else
+			 	print "b"
+			end
+			case piece[1].class.name
+				when "Rook" then print "R "
+				when "Bishop" then print "B "
+				when "Knight" then print "N "
+				when "Queen" then print "Q "
+				when "King" then print "K "
+				when "Pawn" then print "P "
+			end
+		end
+		if column == "h" && row != 1
+			print "\n\t"
+		elsif column == "h" && row == 1
+			print "\n\n"
+		end
+	end
+
 end
 
 class Piece
@@ -85,34 +129,6 @@ class Piece
 	def check_position(column, row)
 		@board.get_piece(column,row.to_i)
 	end
-end
-
-class Pawn < Piece
-	def move(final)
-		x_final = final[0]
-		y_final = final[1].to_i
-
-		if @x_position == x_final && (@y_position - y_final).abs <= 2
-			if @y_position - y_final == 1 && self.color == "black" #b_move_one
-				self.move_one
-			elsif @y_position - y_final == -1 && self.color == "white" #w_move_one
-				self.move_one
-			elsif @y_position - y_final == 2 && self.color == "black" && @y_position == 7 #b_move_two 
-				self.move_two
-			elsif @y_position - y_final == -2 && self.color == "white" && @y_position == 2 #w_move_two
-				self.move_two
-			end
-		elsif (@x_position.ord - x_final.ord).abs == 1 && (@y_position.ord - y_final.ord).abs == 1
-			if @y_position - y_final == 1 && self.color == "black"
-				self.eat
-			elsif @y_position - y_final == -1 && self.color == "white"
-				self.eat
-			end
-		else
-			self.print_result(false)
-		end
-	end
-
 end
 
 class Rook < Piece
@@ -285,7 +301,50 @@ class King < Queen
 	end
 end
 
+class Pawn < King
+	def move(final)
+		x_final = final[0]
+		y_final = final[1].to_i
+
+		if @x_position == x_final && (@y_position - y_final).abs <= 2
+			can_move(x_final, y_final)
+		elsif (@x_position.ord - x_final.ord).abs == 1 && (@y_position.ord - y_final.ord).abs == 1
+		 	can_eat(x_final, y_final)
+		else
+		 	self.print_result(false)
+		end
+	end
+
+	def eat(x_final, y_final)
+		piece = check_position(x_final,y_final)
+		result = piece && piece[1].color != self.color
+		self.print_result(result)
+	end
+
+	def can_move(x_final, y_final)
+		if @y_position - y_final == 1 && self.color == "black" #b_move_one
+			self.move_vertical(y_final)
+		elsif @y_position - y_final == -1 && self.color == "white" #w_move_one
+			self.move_vertical(y_final)
+		elsif @y_position - y_final == 2 && self.color == "black" && @y_position == 7 #b_move_two 
+			self.move_vertical(y_final) 
+		elsif @y_position - y_final == -2 && self.color == "white" && @y_position == 2 #w_move_two
+			self.move_vertical(y_final) 
+		else
+			self.print_result(false)
+		end
+	end
+
+	def can_eat(x_final, y_final)
+		if @y_position - y_final == 1 && self.color == "black"
+		 	self.eat(x_final, y_final)
+	 	elsif @y_position - y_final == -1 && self.color == "white"
+	 		self.eat(x_final, y_final)
+	 	else
+			self.print_result(false)
+		end
+	end
+end
+
 board = ChessBoard.new
-board.move_piece("b2","c3")
-board.move_piece("b2","a4")
-board.move_piece("b2","c4")
+board.draw_board
