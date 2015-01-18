@@ -79,6 +79,19 @@ class ChessBoard
 		end
 	end
 
+	def begin_match(file)
+		movements = IO.read(file).split("\n")
+		system("clear")
+		self.draw_board
+		movements.each do |move|
+			movement = move.split(" ")
+			sleep(3)
+			system("clear")
+			self.move_piece(movement[0],movement[1])
+			self.draw_board
+			p "Movement: " + movement[0] + " to " + movement[1] 
+		end
+	end
 end
 
 class Piece
@@ -108,8 +121,8 @@ class Piece
 		result
 	end
 
-	def print_result(result) 
-		result ? print_legal : print_ilegal
+	def print_result(result,x_final = 0,y_final = 0) 
+		result ? legal(x_final,y_final) : ilegal
 	end
 
 	def check_route(move)
@@ -118,16 +131,22 @@ class Piece
 		result = self.valid_movement(path)
 	end
 
-	def print_legal
-		p "LEGAL"
+	def legal(x_final, y_final)
+		self.refresh_position(x_final, y_final)
+		#p "LEGAL"
 	end
 
-	def print_ilegal
-		p "ILEGAL"
+	def ilegal
+		p "ILEGAL movement found"
 	end
 
 	def check_position(column, row)
 		@board.get_piece(column,row.to_i)
+	end
+
+	def refresh_position(x_final, y_final)
+		@x_position = x_final
+		@y_position = y_final
 	end
 end
 
@@ -153,7 +172,8 @@ class Rook < Piece
 		end
 		move.each { |m| m.chr }
 		result = check_route(move)
-		self.print_result(result)
+
+		self.print_result(result,x,@y_position)
 	end
 
 	def move_vertical(y)
@@ -163,7 +183,7 @@ class Rook < Piece
 			move = [*@x_position + y.to_s + (y_position + 1).to_s].reverse
 		end
 		result = check_route(move)
-		self.print_result(result)
+		self.print_result(result,@x_position,y)
 	end
 end
 
@@ -182,7 +202,7 @@ class Knight < Piece
 	def move_l(x_final, y_final)
 		piece = check_position(x_final, y_final)
 		if piece == nil || piece[1].color != self.color
-			self.print_result(true)
+			self.print_result(true,x_final, y_final)
 		else
 			self.print_result(false)
 		end
@@ -220,7 +240,7 @@ class Bishop < Piece
 		end
 
 		result = check_route(path)
-		self.print_result(result)
+		self.print_result(result,x_final,y_final)
 	end
 end
 
@@ -248,7 +268,7 @@ class Queen < Piece
 		end
 		move.each { |m| m.chr }
 		result = check_route(move)
-		self.print_result(result)
+		self.print_result(result,x,@y_position)
 	end
 
 	def move_vertical(y)
@@ -258,7 +278,7 @@ class Queen < Piece
 			move = [*@x_position + y.to_s + (y_position + 1).to_s].reverse
 		end
 		result = check_route(move)
-		self.print_result(result)
+		self.print_result(result,@x_position,y)
 	end
 
 	def move_diagonal(x_final, y_final)
@@ -280,7 +300,7 @@ class Queen < Piece
 		end
 
 		result = check_route(path)
-		self.print_result(result)
+		self.print_result(result,x_final,y_final)
 	end
 end
 
@@ -318,7 +338,7 @@ class Pawn < King
 	def eat(x_final, y_final)
 		piece = check_position(x_final,y_final)
 		result = piece && piece[1].color != self.color
-		self.print_result(result)
+		self.print_result(result,x_final,y_final)
 	end
 
 	def can_move(x_final, y_final)
@@ -347,4 +367,4 @@ class Pawn < King
 end
 
 board = ChessBoard.new
-board.draw_board
+board.begin_match("match1.txt")
