@@ -222,18 +222,17 @@ class Bishop < Piece
 	end
 
 	def move_diagonal(x_final, y_final)
-		if x_position.downcase.ord - 95 < x_final.downcase.ord - 96
-			x_move = [*(x_position.ord + 1).chr.downcase .. x_final.downcase]
+		if x_position.ord < x_final.ord
+			x_move = [*(x_position.ord + 1).chr .. x_final]
 		else
-			x_move = [*x_final.downcase .. (x_position.ord + 1).chr.downcase].reverse
+			x_move = [*x_final .. (x_position.ord - 1).chr].reverse
 		end
 
 		if y_position < y_final
 			y_move = [*y_position + 1 .. y_final]
 		else
-			y_move = [*y_final .. y_position + 1].reverse
+			y_move = [*y_final .. y_position - 1].reverse
 		end
-
 		move = [*0..x_move.size - 1]
 		path = move.map do |item|
 			x_move[item] + y_move[item].to_s
@@ -282,16 +281,16 @@ class Queen < Piece
 	end
 
 	def move_diagonal(x_final, y_final)
-		if x_position.downcase.ord - 95 < x_final.downcase.ord - 96
-			x_move = [*(x_position.ord + 1).chr.downcase .. x_final.downcase]
+		if x_position.ord < x_final.ord
+			x_move = [*(x_position.ord + 1).chr .. x_final]
 		else
-			x_move = [*x_final.downcase .. (x_position.ord + 1).chr.downcase].reverse
+			x_move = [*x_final .. (x_position.ord - 1).chr].reverse
 		end
 
 		if y_position < y_final
 			y_move = [*y_position + 1 .. y_final]
 		else
-			y_move = [*y_final .. y_position + 1].reverse
+			y_move = [*y_final .. y_position - 1].reverse
 		end
 
 		move = [*0..x_move.size - 1]
@@ -367,4 +366,15 @@ class Pawn < King
 end
 
 board = ChessBoard.new
-board.begin_match("match1.txt")
+while true
+	system("clear")
+	board.draw_board
+	command = gets.chomp
+	if command != "exit"
+		command = command.split(" ") 
+		eval 'board.move_piece("' + command[0] + '","' + command[1] + '")'
+	end
+	system("clear")
+	board.draw_board
+end
+#board.begin_match("match1.txt")
