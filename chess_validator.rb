@@ -10,6 +10,8 @@ class ChessBoard
 				   :pawn5 => Pawn.new("e7",self,"black"), :pawn6 => Pawn.new("f7",self,"black"),:pawn7 => Pawn.new("g7",self,"black"),:pawn8 => Pawn.new("h7",self,"black"),
 				   :rook1 => Rook.new("a8",self,"black"), :rook2 => Rook.new("h8",self,"black"),:knight1 => Knight.new("b8",self,"black"),:knight2 => Knight.new("g8",self,"black"),
 				   :bishop1 => Bishop.new("c8",self,"black"),:bishop2 => Bishop.new("f8",self,"black"),:queen => Queen.new("d8",self,"black"),:king => King.new("e8",self,"black")}
+		# @w_team = {:pawn1 => Pawn.new("a2",self,"white"),:pawn2 => Pawn.new("a3",self,"white")}
+		# @b_team = {:pawn1 => Queen.new("a7",self,"black")} 
 	end
 
 	def move_piece(initial, final)
@@ -34,7 +36,9 @@ class ChessBoard
 
 	def check_team_pieces(team, column, row)
 		the_piece = nil
+		return nil if team == nil || team == {}
 		team.each do |piece|
+			return nil if piece[1] == nil
 			if piece[1].x_position == column && piece[1].y_position == row
 				the_piece = piece
 			end
@@ -58,18 +62,22 @@ class ChessBoard
 		if piece == nil
 			print "-- "
 		else
-			if piece[1].color == "white"
-				print "w"
+			if piece[1] == nil
+				print "-- "
 			else
-			 	print "b"
-			end
-			case piece[1].class.name
-				when "Rook" then print "R "
-				when "Bishop" then print "B "
-				when "Knight" then print "N "
-				when "Queen" then print "Q "
-				when "King" then print "K "
-				when "Pawn" then print "P "
+				if piece[1].color == "white"
+					print "w"
+				else
+				 	print "b"
+				end
+				case piece[1].class.name
+					when "Rook" then print "R "
+					when "Bishop" then print "B "
+					when "Knight" then print "N "
+					when "Queen" then print "Q "
+					when "King" then print "K "
+					when "Pawn" then print "P "
+				end
 			end
 		end
 		if column == "h" && row != 1
@@ -79,7 +87,7 @@ class ChessBoard
 		end
 	end
 
-	def begin_match(file)
+	def read_match(file)
 		movements = IO.read(file).split("\n")
 		system("clear")
 		self.draw_board
@@ -90,6 +98,22 @@ class ChessBoard
 			self.move_piece(movement[0],movement[1])
 			self.draw_board
 			p "Movement: " + movement[0] + " to " + movement[1] 
+		end
+	end
+
+	def play
+		while true
+			system("clear")
+			self.draw_board
+			command = gets.chomp
+			if command != "exit"
+				command = command.split(" ") 
+				eval 'self.move_piece("' + command[0] + '","' + command[1] + '")'
+			else 
+				exit
+			end
+			system("clear")
+			self.draw_board
 		end
 	end
 end
@@ -112,11 +136,12 @@ class Piece
 				is_correct << true
 			end
 		end
+
 		if is_correct.size == 1 && is_correct[0] != self.color
 			result = true
 		else
 			a = is_correct[0.. is_correct.length - 2].join("").gsub("true","")
-			result = (a == "" && is_correct[is_correct.size - 1] != self.color)
+			result = (a == "" && is_correct.last != self.color)
 		end
 		result
 	end
@@ -129,6 +154,26 @@ class Piece
 		path = []
 		move.map { |square|	path << self.check_position(square[0], square[1]) }
 		result = self.valid_movement(path)
+		if result
+			if self.color == "black" 
+				eat_piece(self.color,move.last[0],move.last[1])
+			elsif self.color == "white"
+				eat_piece(self.color,move.last[0],move.last[1])
+			end
+		end
+		result
+	end
+
+	def eat_piece(color,x,y)
+		piece = self.check_position(x,y)
+		return nil if piece == nil
+		if color == "black" 
+			@board.w_team[piece[0]] = nil
+			@board.w_team
+		else
+			@board.b_team[piece[0]] = nil
+			@board.b_team
+		end
 	end
 
 	def legal(x_final, y_final)
@@ -194,6 +239,7 @@ class Knight < Piece
 		if ( (@x_position.ord - x_final.ord).abs == 2 && (@y_position.ord - y_final.ord).abs == 1 ) ||
 		   ( (@x_position.ord - x_final.ord).abs == 1 && (@y_position.ord - y_final.ord).abs == 2 )
 			self.move_l(x_final, y_final)
+			eat_piece(self.color,x_final,y_final)
 		else
 			self.print_result(false)
 		end
@@ -366,15 +412,5 @@ class Pawn < King
 end
 
 board = ChessBoard.new
-while true
-	system("clear")
-	board.draw_board
-	command = gets.chomp
-	if command != "exit"
-		command = command.split(" ") 
-		eval 'board.move_piece("' + command[0] + '","' + command[1] + '")'
-	end
-	system("clear")
-	board.draw_board
-end
-#board.begin_match("match1.txt")
+board.play
+#board.read_match("match1.txt")
