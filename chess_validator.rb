@@ -53,23 +53,26 @@ class ChessBoard
 			end
 		end
 	end
-
 	def draw_position(piece,column,row)
 		if piece == nil
 			print "-- "
 		else
-			if piece[1].color == "white"
-				print "w"
+			if piece[1] == "deleted"
+				print "-- "
 			else
-			 	print "b"
-			end
-			case piece[1].class.name
-				when "Rook" then print "R "
-				when "Bishop" then print "B "
-				when "Knight" then print "N "
-				when "Queen" then print "Q "
-				when "King" then print "K "
-				when "Pawn" then print "P "
+				if piece[1].color == "white"
+					print "w"
+				else
+				 	print "b"
+				end
+				case piece[1].class.name
+					when "Rook" then print "R "
+					when "Bishop" then print "B "
+					when "Knight" then print "N "
+					when "Queen" then print "Q "
+					when "King" then print "K "
+					when "Pawn" then print "P "
+				end
 			end
 		end
 		if column == "h" && row != 1
@@ -79,7 +82,7 @@ class ChessBoard
 		end
 	end
 
-	def begin_match(file)
+	def read_match(file)
 		movements = IO.read(file).split("\n")
 		system("clear")
 		self.draw_board
@@ -90,6 +93,27 @@ class ChessBoard
 			self.move_piece(movement[0],movement[1])
 			self.draw_board
 			p "Movement: " + movement[0] + " to " + movement[1] 
+		end
+	end
+
+	def play
+		system("clear")
+		self.draw_board
+		while true
+			command = gets.chomp
+			if command != "exit"
+				command = command.split(" ") 
+				if command[1]
+					result = eval 'self.move_piece("' + command[0] + '","' + command[1] + '")'
+				end
+			else 
+				exit
+			end
+			system("clear")
+			self.draw_board
+			unless result
+				p "Invalid movement, try again"
+			end
 		end
 	end
 end
@@ -112,11 +136,12 @@ class Piece
 				is_correct << true
 			end
 		end
+
 		if is_correct.size == 1 && is_correct[0] != self.color
 			result = true
 		else
 			a = is_correct[0.. is_correct.length - 2].join("").gsub("true","")
-			result = (a == "" && is_correct[is_correct.size - 1] != self.color)
+			result = (a == "" && is_correct.last != self.color)
 		end
 		result
 	end
@@ -129,6 +154,24 @@ class Piece
 		path = []
 		move.map { |square|	path << self.check_position(square[0], square[1]) }
 		result = self.valid_movement(path)
+		if result
+			if self.color == "black" 
+				eat_piece(self.color,move.last[0],move.last[1])
+			elsif self.color == "white"
+				eat_piece(self.color,move.last[0],move.last[1])
+			end
+		end
+		result
+	end
+
+	def eat_piece(color,x,y)
+		piece = self.check_position(x,y)
+		return nil if piece == nil
+		if color == "black" 
+			@board.w_team.reject!{ |k| k == piece[0] }
+		else
+			@board.b_team.reject!{ |k| k == piece[0] }
+		end
 	end
 
 	def legal(x_final, y_final)
@@ -156,12 +199,13 @@ class Rook < Piece
 		y_final = final[1].to_i
 
 		if @x_position == x_final && @y_position != y_final
-			self.move_vertical(y_final)
+			result = self.move_vertical(y_final)
 		elsif @y_position == y_final && @x_position != x_final
 			result = self.move_horizontal(x_final)
 		else
 			self.print_result(false)
 		end
+		result
 	end
 
 	def move_horizontal(x)
@@ -174,6 +218,7 @@ class Rook < Piece
 		result = check_route(move)
 
 		self.print_result(result,x,@y_position)
+		result
 	end
 
 	def move_vertical(y)
@@ -184,6 +229,7 @@ class Rook < Piece
 		end
 		result = check_route(move)
 		self.print_result(result,@x_position,y)
+		result
 	end
 end
 
@@ -193,18 +239,23 @@ class Knight < Piece
 		y_final = final[1].to_i
 		if ( (@x_position.ord - x_final.ord).abs == 2 && (@y_position.ord - y_final.ord).abs == 1 ) ||
 		   ( (@x_position.ord - x_final.ord).abs == 1 && (@y_position.ord - y_final.ord).abs == 2 )
-			self.move_l(x_final, y_final)
+			result = self.move_l(x_final, y_final)
+			eat_piece(self.color,x_final,y_final)
 		else
 			self.print_result(false)
+			result = false
 		end
+		result
 	end
 
 	def move_l(x_final, y_final)
 		piece = check_position(x_final, y_final)
 		if piece == nil || piece[1].color != self.color
 			self.print_result(true,x_final, y_final)
+			true
 		else
 			self.print_result(false)
+			false
 		end
 	end
 end
@@ -215,25 +266,26 @@ class Bishop < Piece
 		y_final = final[1].to_i
 
 		if (@x_position.ord - x_final.ord).abs == (@y_position.ord - y_final.ord).abs
-			self.move_diagonal(x_final, y_final)
+			result = self.move_diagonal(x_final, y_final)
 		else
 			self.print_result(false)
+			result = false
 		end
+		result
 	end
 
 	def move_diagonal(x_final, y_final)
-		if x_position.downcase.ord - 95 < x_final.downcase.ord - 96
-			x_move = [*(x_position.ord + 1).chr.downcase .. x_final.downcase]
+		if x_position.ord < x_final.ord
+			x_move = [*(x_position.ord + 1).chr .. x_final]
 		else
-			x_move = [*x_final.downcase .. (x_position.ord + 1).chr.downcase].reverse
+			x_move = [*x_final .. (x_position.ord - 1).chr].reverse
 		end
 
 		if y_position < y_final
 			y_move = [*y_position + 1 .. y_final]
 		else
-			y_move = [*y_final .. y_position + 1].reverse
+			y_move = [*y_final .. y_position - 1].reverse
 		end
-
 		move = [*0..x_move.size - 1]
 		path = move.map do |item|
 			x_move[item] + y_move[item].to_s
@@ -241,6 +293,7 @@ class Bishop < Piece
 
 		result = check_route(path)
 		self.print_result(result,x_final,y_final)
+		result
 	end
 end
 
@@ -250,14 +303,16 @@ class Queen < Piece
 		y_final = final[1].to_i
 
 		if @x_position == x_final && @y_position != y_final
-			self.move_vertical(y_final)
+			result = self.move_vertical(y_final)
 		elsif @y_position == y_final && @x_position != x_final
 			result = self.move_horizontal(x_final)
 		elsif (@x_position.ord - x_final.ord).abs == (@y_position.ord - y_final.ord).abs
-			self.move_diagonal(x_final, y_final)
+			result = self.move_diagonal(x_final, y_final)
 		else
 			self.print_result(false)
+			result = false
 		end
+		result
 	end
 
 	def move_horizontal(x)
@@ -269,6 +324,7 @@ class Queen < Piece
 		move.each { |m| m.chr }
 		result = check_route(move)
 		self.print_result(result,x,@y_position)
+		result
 	end
 
 	def move_vertical(y)
@@ -279,19 +335,20 @@ class Queen < Piece
 		end
 		result = check_route(move)
 		self.print_result(result,@x_position,y)
+		result
 	end
 
 	def move_diagonal(x_final, y_final)
-		if x_position.downcase.ord - 95 < x_final.downcase.ord - 96
-			x_move = [*(x_position.ord + 1).chr.downcase .. x_final.downcase]
+		if x_position.ord < x_final.ord
+			x_move = [*(x_position.ord + 1).chr .. x_final]
 		else
-			x_move = [*x_final.downcase .. (x_position.ord + 1).chr.downcase].reverse
+			x_move = [*x_final .. (x_position.ord - 1).chr].reverse
 		end
 
 		if y_position < y_final
 			y_move = [*y_position + 1 .. y_final]
 		else
-			y_move = [*y_final .. y_position + 1].reverse
+			y_move = [*y_final .. y_position - 1].reverse
 		end
 
 		move = [*0..x_move.size - 1]
@@ -301,6 +358,7 @@ class Queen < Piece
 
 		result = check_route(path)
 		self.print_result(result,x_final,y_final)
+		result
 	end
 end
 
@@ -310,14 +368,16 @@ class King < Queen
 		y_final = final[1].to_i
 
 		if @x_position == x_final && (@y_position - y_final).abs == 1
-			self.move_vertical(y_final)
+			result = self.move_vertical(y_final)
 		elsif @y_position == y_final && (@x_position.ord - x_final.ord).abs == 1
 			result = self.move_horizontal(x_final)
 		elsif (@x_position.ord - x_final.ord).abs == 1 && (@y_position.ord - y_final.ord).abs == 1
-			self.move_diagonal(x_final, y_final)
+			result = self.move_diagonal(x_final, y_final)
 		else
 			self.print_result(false)
+			result = false
 		end
+		result
 	end
 end
 
@@ -327,44 +387,51 @@ class Pawn < King
 		y_final = final[1].to_i
 
 		if @x_position == x_final && (@y_position - y_final).abs <= 2
-			can_move(x_final, y_final)
+			result = can_move(x_final, y_final)
 		elsif (@x_position.ord - x_final.ord).abs == 1 && (@y_position.ord - y_final.ord).abs == 1
-		 	can_eat(x_final, y_final)
+		 	result = can_eat(x_final, y_final)
 		else
 		 	self.print_result(false)
+		 	result = false
 		end
+		result
 	end
 
 	def eat(x_final, y_final)
 		piece = check_position(x_final,y_final)
 		result = piece && piece[1].color != self.color
 		self.print_result(result,x_final,y_final)
+		result
 	end
 
 	def can_move(x_final, y_final)
 		if @y_position - y_final == 1 && self.color == "black" #b_move_one
-			self.move_vertical(y_final)
+			result = self.move_vertical(y_final)
 		elsif @y_position - y_final == -1 && self.color == "white" #w_move_one
-			self.move_vertical(y_final)
+			result = self.move_vertical(y_final)
 		elsif @y_position - y_final == 2 && self.color == "black" && @y_position == 7 #b_move_two 
-			self.move_vertical(y_final) 
+			result = self.move_vertical(y_final) 
 		elsif @y_position - y_final == -2 && self.color == "white" && @y_position == 2 #w_move_two
-			self.move_vertical(y_final) 
+			result = self.move_vertical(y_final) 
 		else
 			self.print_result(false)
+			result = false
 		end
+		result 
 	end
 
 	def can_eat(x_final, y_final)
 		if @y_position - y_final == 1 && self.color == "black"
-		 	self.eat(x_final, y_final)
+		 	result = self.eat(x_final, y_final)
 	 	elsif @y_position - y_final == -1 && self.color == "white"
-	 		self.eat(x_final, y_final)
+	 		result = self.eat(x_final, y_final)
 	 	else
-			self.print_result(false)
+			result = self.print_result(false)
 		end
+		result
 	end
 end
 
 board = ChessBoard.new
-board.begin_match("match1.txt")
+board.play
+#board.read_match("match1.txt")
