@@ -10,8 +10,6 @@ class ChessBoard
 				   :pawn5 => Pawn.new("e7",self,"black"), :pawn6 => Pawn.new("f7",self,"black"),:pawn7 => Pawn.new("g7",self,"black"),:pawn8 => Pawn.new("h7",self,"black"),
 				   :rook1 => Rook.new("a8",self,"black"), :rook2 => Rook.new("h8",self,"black"),:knight1 => Knight.new("b8",self,"black"),:knight2 => Knight.new("g8",self,"black"),
 				   :bishop1 => Bishop.new("c8",self,"black"),:bishop2 => Bishop.new("f8",self,"black"),:queen => Queen.new("d8",self,"black"),:king => King.new("e8",self,"black")}
-		# @w_team = {:pawn1 => Pawn.new("a2",self,"white"),:pawn2 => Pawn.new("a3",self,"white")}
-		# @b_team = {:pawn1 => Queen.new("a7",self,"black")} 
 	end
 
 	def move_piece(initial, final)
@@ -36,9 +34,7 @@ class ChessBoard
 
 	def check_team_pieces(team, column, row)
 		the_piece = nil
-		return nil if team == nil || team == {}
 		team.each do |piece|
-			return nil if piece[1] == nil
 			if piece[1].x_position == column && piece[1].y_position == row
 				the_piece = piece
 			end
@@ -57,12 +53,11 @@ class ChessBoard
 			end
 		end
 	end
-
 	def draw_position(piece,column,row)
 		if piece == nil
 			print "-- "
 		else
-			if piece[1] == nil
+			if piece[1] == "deleted"
 				print "-- "
 			else
 				if piece[1].color == "white"
@@ -102,18 +97,23 @@ class ChessBoard
 	end
 
 	def play
+		system("clear")
+		self.draw_board
 		while true
-			system("clear")
-			self.draw_board
 			command = gets.chomp
 			if command != "exit"
 				command = command.split(" ") 
-				eval 'self.move_piece("' + command[0] + '","' + command[1] + '")'
+				if command[1]
+					result = eval 'self.move_piece("' + command[0] + '","' + command[1] + '")'
+				end
 			else 
 				exit
 			end
 			system("clear")
 			self.draw_board
+			unless result
+				p "Invalid movement, try again"
+			end
 		end
 	end
 end
@@ -168,11 +168,9 @@ class Piece
 		piece = self.check_position(x,y)
 		return nil if piece == nil
 		if color == "black" 
-			@board.w_team[piece[0]] = nil
-			@board.w_team
+			@board.w_team.reject!{ |k| k == piece[0] }
 		else
-			@board.b_team[piece[0]] = nil
-			@board.b_team
+			@board.b_team.reject!{ |k| k == piece[0] }
 		end
 	end
 
@@ -201,12 +199,13 @@ class Rook < Piece
 		y_final = final[1].to_i
 
 		if @x_position == x_final && @y_position != y_final
-			self.move_vertical(y_final)
+			result = self.move_vertical(y_final)
 		elsif @y_position == y_final && @x_position != x_final
 			result = self.move_horizontal(x_final)
 		else
 			self.print_result(false)
 		end
+		result
 	end
 
 	def move_horizontal(x)
@@ -219,6 +218,7 @@ class Rook < Piece
 		result = check_route(move)
 
 		self.print_result(result,x,@y_position)
+		result
 	end
 
 	def move_vertical(y)
@@ -229,6 +229,7 @@ class Rook < Piece
 		end
 		result = check_route(move)
 		self.print_result(result,@x_position,y)
+		result
 	end
 end
 
@@ -238,19 +239,23 @@ class Knight < Piece
 		y_final = final[1].to_i
 		if ( (@x_position.ord - x_final.ord).abs == 2 && (@y_position.ord - y_final.ord).abs == 1 ) ||
 		   ( (@x_position.ord - x_final.ord).abs == 1 && (@y_position.ord - y_final.ord).abs == 2 )
-			self.move_l(x_final, y_final)
+			result = self.move_l(x_final, y_final)
 			eat_piece(self.color,x_final,y_final)
 		else
 			self.print_result(false)
+			result = false
 		end
+		result
 	end
 
 	def move_l(x_final, y_final)
 		piece = check_position(x_final, y_final)
 		if piece == nil || piece[1].color != self.color
 			self.print_result(true,x_final, y_final)
+			true
 		else
 			self.print_result(false)
+			false
 		end
 	end
 end
@@ -261,10 +266,12 @@ class Bishop < Piece
 		y_final = final[1].to_i
 
 		if (@x_position.ord - x_final.ord).abs == (@y_position.ord - y_final.ord).abs
-			self.move_diagonal(x_final, y_final)
+			result = self.move_diagonal(x_final, y_final)
 		else
 			self.print_result(false)
+			result = false
 		end
+		result
 	end
 
 	def move_diagonal(x_final, y_final)
@@ -286,6 +293,7 @@ class Bishop < Piece
 
 		result = check_route(path)
 		self.print_result(result,x_final,y_final)
+		result
 	end
 end
 
@@ -295,14 +303,16 @@ class Queen < Piece
 		y_final = final[1].to_i
 
 		if @x_position == x_final && @y_position != y_final
-			self.move_vertical(y_final)
+			result = self.move_vertical(y_final)
 		elsif @y_position == y_final && @x_position != x_final
 			result = self.move_horizontal(x_final)
 		elsif (@x_position.ord - x_final.ord).abs == (@y_position.ord - y_final.ord).abs
-			self.move_diagonal(x_final, y_final)
+			result = self.move_diagonal(x_final, y_final)
 		else
 			self.print_result(false)
+			result = false
 		end
+		result
 	end
 
 	def move_horizontal(x)
@@ -314,6 +324,7 @@ class Queen < Piece
 		move.each { |m| m.chr }
 		result = check_route(move)
 		self.print_result(result,x,@y_position)
+		result
 	end
 
 	def move_vertical(y)
@@ -324,6 +335,7 @@ class Queen < Piece
 		end
 		result = check_route(move)
 		self.print_result(result,@x_position,y)
+		result
 	end
 
 	def move_diagonal(x_final, y_final)
@@ -346,6 +358,7 @@ class Queen < Piece
 
 		result = check_route(path)
 		self.print_result(result,x_final,y_final)
+		result
 	end
 end
 
@@ -355,14 +368,16 @@ class King < Queen
 		y_final = final[1].to_i
 
 		if @x_position == x_final && (@y_position - y_final).abs == 1
-			self.move_vertical(y_final)
+			result = self.move_vertical(y_final)
 		elsif @y_position == y_final && (@x_position.ord - x_final.ord).abs == 1
 			result = self.move_horizontal(x_final)
 		elsif (@x_position.ord - x_final.ord).abs == 1 && (@y_position.ord - y_final.ord).abs == 1
-			self.move_diagonal(x_final, y_final)
+			result = self.move_diagonal(x_final, y_final)
 		else
 			self.print_result(false)
+			result = false
 		end
+		result
 	end
 end
 
@@ -372,42 +387,48 @@ class Pawn < King
 		y_final = final[1].to_i
 
 		if @x_position == x_final && (@y_position - y_final).abs <= 2
-			can_move(x_final, y_final)
+			result = can_move(x_final, y_final)
 		elsif (@x_position.ord - x_final.ord).abs == 1 && (@y_position.ord - y_final.ord).abs == 1
-		 	can_eat(x_final, y_final)
+		 	result = can_eat(x_final, y_final)
 		else
 		 	self.print_result(false)
+		 	result = false
 		end
+		result
 	end
 
 	def eat(x_final, y_final)
 		piece = check_position(x_final,y_final)
 		result = piece && piece[1].color != self.color
 		self.print_result(result,x_final,y_final)
+		result
 	end
 
 	def can_move(x_final, y_final)
 		if @y_position - y_final == 1 && self.color == "black" #b_move_one
-			self.move_vertical(y_final)
+			result = self.move_vertical(y_final)
 		elsif @y_position - y_final == -1 && self.color == "white" #w_move_one
-			self.move_vertical(y_final)
+			result = self.move_vertical(y_final)
 		elsif @y_position - y_final == 2 && self.color == "black" && @y_position == 7 #b_move_two 
-			self.move_vertical(y_final) 
+			result = self.move_vertical(y_final) 
 		elsif @y_position - y_final == -2 && self.color == "white" && @y_position == 2 #w_move_two
-			self.move_vertical(y_final) 
+			result = self.move_vertical(y_final) 
 		else
 			self.print_result(false)
+			result = false
 		end
+		result 
 	end
 
 	def can_eat(x_final, y_final)
 		if @y_position - y_final == 1 && self.color == "black"
-		 	self.eat(x_final, y_final)
+		 	result = self.eat(x_final, y_final)
 	 	elsif @y_position - y_final == -1 && self.color == "white"
-	 		self.eat(x_final, y_final)
+	 		result = self.eat(x_final, y_final)
 	 	else
-			self.print_result(false)
+			result = self.print_result(false)
 		end
+		result
 	end
 end
 
